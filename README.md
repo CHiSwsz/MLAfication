@@ -1,125 +1,107 @@
-# MHA2MLA
+# MLAfication: Bringing Multi-Head Latent Attention to Pretrained Models
 
-This repo contains the code for the paper ["Towards Economical Inference: Enabling DeepSeek's Multi-Head Latent Attention in Any Transformer-based LLMs"](https://arxiv.org/abs/2502.14837).
+**MLAfication** brings together our research on converting pretrained language and vision-language models to Multi-Head Latent Attention (MLA). The projects explore contribution-aware partial RoPE, low-rank KV compression, multimodal adaptation, and conversion of QKNorm-based dense and MoE models.
 
-![alt text](img/overview.png)
+This is the continuation of **MHA2MLA**, now organized as one repository for three papers. Each project includes its own implementation, dependencies, and reproduction guide.
 
-## News
+## 📦 Projects
 
-- [2025.06.13] Release the refactored code and add support for the Qwen model.
-- [2025.03.12] Released the inference code implemented using **PyTorch** (support for [FlashMLA](https://github.com/deepseek-ai/FlashMLA) inference requires additional development time). 
-- [2025.03.04] The four [MLA checkpoints](https://huggingface.co/collections/fnlp/mha2mla-67c51287dfc6cd46127e1b92) ($d_{kv}$=8/16/32/128) derived from `SmolLM-135M/360M/1B7` are publicly available.
-- [2025.03.03] The four [MLA checkpoints](https://huggingface.co/collections/fnlp/mha2mla-67c51287dfc6cd46127e1b92) ($d_{kv}$=16/32/64/256) derived from `Llama-2-7B` are publicly available.
-- [2025.02.21] The paper of MHA2MLA is publicly available: https://arxiv.org/abs/2502.14837
-- [2025.02.19] Released the first version of the MHA2MLA code, providing usage code for Llama fine-tuning and evaluating.
+| Project | Venue / status | Focus | Paper | Code |
+| --- | --- | --- | --- | --- |
+| **MHA2MLA** | **ACL 2025** | Convert pretrained MHA/GQA LLMs to MLA using partial RoPE and joint KV SVD. | [Proceedings](https://aclanthology.org/2025.acl-long.1597/) · [arXiv](https://arxiv.org/abs/2502.14837) | [MHA2MLA](MHA2MLA/) |
+| **MHA2MLA-VLM** | **AAAI 2026** | Modality-adaptive partial RoPE and modality-decoupled SVD for LLaVA-1.5, LLaVA-NeXT, and Qwen2.5-VL. | [Proceedings](https://ojs.aaai.org/index.php/AAAI/article/view/40319) · [arXiv](https://arxiv.org/abs/2601.11464) | [MHA2MLA-VLM](MHA2MLA-VLM/) |
+| **MLAfication** | **Under review** | Contribution-aware partial RoPE, activation-aware SVD initialization, and recovery training for standard MHA/GQA and QKNorm-based dense/MoE models. | arXiv link coming soon | [MLAfication](MLAfication/) |
 
-## TO-DO
+## 📰 News
 
-- [ ] ~~Provide the code for incorporating the projection matrix and inference.~~
-- [ ] Thanks to DeepSeek for open-sourcing the [FlashMLA](https://github.com/deepseek-ai/FlashMLA) inference framework. It’s theoretically possible to save more GPU memory usage using this framework. Let’s see how economical MHA2MLA + FlashMLA (+ KV quanto) can be!
-- [x] Release the code of MHA2MLA based on HuggingFace `Transformers`
+- **[2026.10.13]** Consolidated the three projects into **MLAfication**, continuing the original MHA2MLA repository. MLAfication's manuscript is under review; its arXiv link will be added after announcement.
+- **[2026.03.14]** MHA2MLA-VLM published in the **AAAI 2026** proceedings.
+- **[2026.01.22]** Released MHA2MLA-VLM checkpoints derived from Qwen2.5-VL-7B.
+- **[2025.07]** MHA2MLA published at **ACL 2025**.
+- **[2025.06.13]** Released the refactored MHA2MLA implementation with Qwen support.
 
-## Datasets
+Earlier project updates are preserved in the individual READMEs.
 
-First download the datasets.
+## 🚀 Getting started
 
-- smollm-corpus(fineweb-edu-dedup, cosmopedia-v2, python-edu): https://huggingface.co/datasets/HuggingFaceTB/smollm-corpus
-- open-web-math: https://huggingface.co/datasets/open-web-math/open-web-math
-- stackoverflow: https://huggingface.co/datasets/bigcode/stackoverflow-clean
-
-Secondly, process the datasets according to https://github.com/huggingface/nanotron/blob/main/docs/nanoset.md.
-
-## Environment
-
-Install pytorch and other packages.
-
-```sh
-conda create -n mha2mla python=3.11
-pip install torch==2.4.0 torchvision==0.19.0
-pip install -r requirements.txt
+```bash
+git clone https://github.com/JT-Ushio/MLAfication.git
+cd MLAfication
 ```
 
-## Fine-Tuning
+Choose the project for the paper or workflow you want to reproduce:
 
-First, prepare configuration files referencing [135M_4GPU.yaml](./cfgs/SmolLM1-135M-4GPU.yml).
+```bash
+# ACL 2025: original language-model conversion
+cd MHA2MLA
 
-For information on the configuration of mha2mla, you can refer to the [arguments.py](./src/mha2mla/arguments.py) file.
+# AAAI 2026: vision-language model conversion
+# cd MHA2MLA-VLM
 
-Then, use the following command for fine-tuning:
-
-```sh
-torchrun --nproc_per_node 4 \
-    ./src/mha2mla/run_train.py \
-    --cfg_file ./cfgs/SmolLM1-135M-4GPU.yml
+# MLAfication: standard MHA/GQA and QKNorm-based dense/MoE models
+# cd MLAfication
 ```
 
-> If you want to use the partial-RoPE version `2-norm`, you should get the `qk_tensor` first.
-> Using the following command, you can get the `qk_tensor`:
-> 
-> ```sh
-> torchrun --nproc_per_node 1 \
->     ./src/mha2mla/2_norm.py \
->     --config_file ./cfgs/SmolLM1-135M-8GPU.yaml \
-> ```
+Create a separate Python environment for each project and follow its README. Run project commands from that project's directory: configuration, data, rank-tensor, and output paths are relative to it. The ACL/AAAI implementations target an older stack than the MLAfication implementation; install the requirements for the selected project.
 
-## Lighteval Evaluation
+For MLAfication, start with [standard MHA/GQA conversion](MLAfication/mha_gqa/) or [QKNorm conversion](MLAfication/qknorm/). The [migration guide](docs/MIGRATION.md) maps the former repository layouts to their new locations.
 
-For evaluation, you can use the following command:
+## 🤗 Checkpoints
 
-```sh
-accelerate launch --multi_gpu --num_processes=4 \
-    ./eval/eval.py \
-    accelerate \
-    --model_args "pretrained=${model_name_or_path},revision=main,dtype=bfloat16,max_length=2048" \
-    --override_batch_size 48 \
-    --custom_tasks "./eval/tasks.py" \
-    --tasks "./eval/smollm1_base.txt" \
-    --output_dir "./eval_results/"
-```
+| Project | Released models |
+| --- | --- |
+| MHA2MLA | [MHA2MLA collection](https://huggingface.co/collections/fnlp/mha2mla-67c51287dfc6cd46127e1b92) — Llama-2 and SmolLM |
+| MHA2MLA-VLM | [Qwen2.5-VL MLA checkpoints](https://huggingface.co/cnxup/models) |
+| MLAfication | [MLAfication collection](https://huggingface.co/collections/Gnaudzzx/mlafication-6a91b14d4fb0e7dec2e1fc10) |
 
-## LongBench Evaluation
+Model weights and datasets are downloaded separately. Existing small rank-selection tensors in the published projects are retained.
 
-For the baseline evaluation, you can use the following command:
+## 📚 Citation
 
-```sh
-torchrun --nproc_per_node=4 \
-    ./eval/longbench.py \
-    --model_path ${model_name_or_path} \
-    --tokenizer_path ${model_name_or_path} \
-    --longbench True \
-    --lb_max_tokens 2048 \
-    --lb_batch_size 16 \
-    --output_dir ./longbench/bf16 \
-    --dtype "bfloat16"
-```
+Please cite the paper corresponding to the code you use. All entries are also available in [CITATIONS.bib](CITATIONS.bib); the MLAfication entry currently uses the manuscript metadata and will be updated with its arXiv identifier.
 
-If you want to use the quantized KV cache, you can use the following command:
+```bibtex
+@inproceedings{ji-etal-2025-towards,
+  title = {Towards Economical Inference: Enabling DeepSeek's Multi-Head Latent Attention in Any Transformer-based LLMs},
+  author = {Ji, Tao and Guo, Bin and Wu, Yuanbin and Guo, Qipeng and Shen, Lixing and Chen, Zhan and Qiu, Xipeng and Zhang, Qi and Gui, Tao},
+  booktitle = {Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)},
+  year = {2025},
+  pages = {33313--33328},
+  publisher = {Association for Computational Linguistics},
+  doi = {10.18653/v1/2025.acl-long.1597},
+  url = {https://aclanthology.org/2025.acl-long.1597/}
+}
 
-```sh
-torchrun --nproc_per_node=4 \
-    ./eval/longbench.py \
-    --model_path ${model_name_or_path} \
-    --tokenizer_path ${model_name_or_path} \
-    --longbench True \
-    --lb_max_tokens 2048 \
-    --lb_batch_size 16 \
-    --output_dir ./longbench/${model_name_or_path}_hqq_int4 \
-    --dtype "bfloat16" \
-    --cache_implementation "quantized" \
-    --backend "HQQ" \
-    --nbits 4 \
-    --residual_length 128
-```
-
-## Citation
-```
-@misc{ji2025economicalinferenceenablingdeepseeks,
-      title={Towards Economical Inference: Enabling DeepSeek's Multi-Head Latent Attention in Any Transformer-based LLMs}, 
-      author={Tao Ji and Bin Guo and Yuanbin Wu and Qipeng Guo and Lixing Shen and Zhan Chen and Xipeng Qiu and Qi Zhang and Tao Gui},
-      year={2025},
-      eprint={2502.14837},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2502.14837}, 
+@inproceedings{fan2026mha2mlavlm,
+  title = {MHA2MLA-VLM: Enabling DeepSeek's Economical Multi-Head Latent Attention Across Vision-Language Models},
+  author = {Fan, Xiaoran and Sun, Zhichao and Ji, Tao and Shen, Lixing and Gui, Tao},
+  booktitle = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume = {40},
+  number = {36},
+  pages = {30638--30646},
+  year = {2026},
+  doi = {10.1609/aaai.v40i36.40319},
+  url = {https://ojs.aaai.org/index.php/AAAI/article/view/40319}
 }
 ```
+
+**MLAfication manuscript:** *MLAfication: Efficiently Enabling High-Fidelity MLA for Modern LLMs* — Zile Wang, Zhide Xie, and Tao Ji. Under review; arXiv announcement pending.
+
+```bibtex
+@unpublished{wang2026mlafication,
+  title = {MLAfication: Efficiently Enabling High-Fidelity MLA for Modern LLMs},
+  author = {Wang, Zile and Xie, Zhide and Ji, Tao},
+  year = {2026},
+  note = {Manuscript under review; arXiv announcement pending}
+}
+```
+
+## License and provenance
+
+Original code is licensed under [Apache-2.0](LICENSE), except where otherwise noted. Bundled and adapted code retains its original license and attribution; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the project-specific notices.
+
+The source repositories and exact imported commits are recorded in [docs/SOURCES.json](docs/SOURCES.json). Paper manuscripts, figures, model weights, and datasets remain subject to their respective terms.
+
+## ⭐ Star history
+
+[![Star History Chart](https://api.star-history.com/chart?repos=JT-Ushio/MLAfication&type=Date)](https://www.star-history.com/#JT-Ushio/MLAfication&Date)

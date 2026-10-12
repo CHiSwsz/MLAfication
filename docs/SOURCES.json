@@ -1,0 +1,29 @@
+{
+  "integration_date": "2026-10-13",
+  "projects": [
+    {
+      "project": "MHA2MLA",
+      "source_repository": "JT-Ushio/MHA2MLA",
+      "source_branch": "main",
+      "source_commit": "7a56785ac2a814ec594b33d472a174693a55a952",
+      "source_file_count": 58,
+      "history": "MHA2MLA history remains in this repository; other project histories remain in their source repositories. Only default-branch snapshots are imported."
+    },
+    {
+      "project": "MHA2MLA-VLM",
+      "source_repository": "JT-Ushio/MHA2MLA-VLM",
+      "source_branch": "main",
+      "source_commit": "69a3c6e3116c6b628f438be1f057bf1efa2c363f",
+      "source_file_count": 1708,
+      "history": "MHA2MLA history remains in this repository; other project histories remain in their source repositories. Only default-branch snapshots are imported."
+    },
+    {
+      "project": "MLAfication",
+      "source_repository": "JT-Ushio/MLAfication_Temp",
+      "source_branch": "main",
+      "source_commit": "02d7a586d8d133659fc66b53e551be03eccfc25a",
+      "source_file_count": 39,
+      "history": "MHA2MLA history remains in this repository; other project histories remain in their source repositories. Only default-branch snapshots are imported."
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+# CUDA-enabled PyTorch wheels may require the matching index URL for your system.
+torch>=2.11,<2.12
+transformers>=5.3,<5.4
+datasets>=3.2,<4
+accelerate>=1,<2
+deepspeed>=0.17,<0.19
+safetensors>=0.5,<1
+numpy>=1.26,<3
+pandas>=2,<3
+tqdm>=4.66,<5
+# The v0.5 tag predates nanotron.data.nanoset; pin the compatible Nanoset commit.
+nanotron[nanosets] @ git+https://github.com/huggingface/nanotron.git@395a4dbbd9124d8eb90db66772bd702e8eeff5d9
+huggingface-hub>=0.23
+GitPython>=3.1.41
+termcolor==2.3.0
+pytablewriter>=1.2
+colorama>=0.4
+aenum==3.1.15
+nltk==3.9.1
+scikit-learn>=1.5
+spacy==3.7.2
+sacrebleu>=2.4
+rouge-score==0.1.2
+sentencepiece>=0.1.99
+protobuf==3.20.*
+pycountry>=24
+fsspec[http]>=2023.12.2,<=2024.9.0
+jieba>=0.42,<1
+fuzzywuzzy>=0.18,<1
+python-Levenshtein>=0.27,<1
+rouge>=1.0.1,<2
+optimum-quanto>=0.2.7,<1
+ninja>=1.11,<2
