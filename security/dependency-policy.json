@@ -1,0 +1,98 @@
+{
+  "updated": "2026-10-24",
+  "nltk": "3.10.4",
+  "tensor_stack": {
+    "torch": "2.13.0",
+    "torchvision": "0.28.0",
+    "transformers": "5.10.4",
+    "legacy_transformers": "5.19.0 (required by patched vLLM 0.32.0)"
+  },
+  "security_overrides": {
+    "security/overrides.txt": "Overrides stale NLTK, Protobuf, datasets and fsspec caps in framework metadata with patched releases.",
+    "security/lighteval-overrides.txt": "Also overrides historical LightEval torch/spaCy caps for the validated tensor and NumPy 2 stack."
+  },
+  "unpatched_dependencies_removed": {
+    "diskcache": "Removed unused direct DiskCache and standalone Outlines environment exports. Updated vLLM uses outlines-core without bringing back the vulnerable DiskCache package.",
+    "sqlitedict": "Replaced its only runtime use with a standard-library SQLite cache using data-only JSON. Existing pickle tables are retained but never loaded.",
+    "sglang": "Excluded from the two default reference environments because even SGLang 0.5.22 pulls Outlines and vulnerable DiskCache. Optional SGLang adapters require a separate environment; Hugging Face and vLLM adapters remain available."
+  },
+  "unused_environment_exports_removed": [
+    "gradio",
+    "gradio_client",
+    "groovy",
+    "safehttpx",
+    "pyairports",
+    "pytorch-triton",
+    "tilelang",
+    "manual NVIDIA CUDA library pins (the selected PyTorch wheel supplies its runtime)",
+    "outlines (updated vLLM depends on outlines-core, not this unused SDK)"
+  ],
+  "validation": {
+    "platform": "Linux x86_64 (glibc >= 2.28), Python 3.11 dependency resolution; macOS Python 3.12 CPU smoke tests",
+    "current_mla": "Tiny patched Llama forward/backward and safe tensor deserialization; NLTK primitives and resource-path enforcement; JSON cache regression tests",
+    "gpu_training_or_serving_benchmarks": false,
+    "source_pinned_dependencies": "Nanotron and archived LightEval retain immutable Git commit references; package-version vulnerability services cannot audit those source commits as releases."
+  },
+  "note": "This record describes the validated update scope; it is not a guarantee against future vulnerabilities.",
+  "tools": {
+    "resolver": "uv==0.13.5",
+    "auditor": "pip-audit==2.10.1"
+  },
+  "python_version": "3.11",
+  "python_platform": "x86_64-manylinux_2_28",
+  "profiles": {
+    "mha2mla": {
+      "manifest": "MHA2MLA/requirements.txt",
+      "overrides": "security/lighteval-overrides.txt",
+      "lock": "security/locks/mha2mla-py311-linux.txt",
+      "allowed_source_audit_skips": [
+        "lighteval",
+        "nanotron"
+      ]
+    },
+    "mha2mla-vlm": {
+      "manifest": "MHA2MLA-VLM/requirements.txt",
+      "overrides": "security/overrides.txt",
+      "lock": "security/locks/mha2mla-vlm-py311-linux.txt",
+      "allowed_source_audit_skips": []
+    },
+    "mlafication": {
+      "manifest": "MLAfication/requirements.txt",
+      "overrides": "security/lighteval-overrides.txt",
+      "lock": "security/locks/mlafication-py311-linux.txt",
+      "allowed_source_audit_skips": [
+        "nanotron"
+      ]
+    },
+    "lmms-eval": {
+      "manifest": "MHA2MLA-VLM/lmms-eval/pyproject.toml",
+      "overrides": "security/overrides.txt",
+      "lock": "security/locks/lmms-eval-py311-linux.txt",
+      "allowed_source_audit_skips": []
+    },
+    "megabench": {
+      "manifest": "MHA2MLA-VLM/lmms-eval/lmms_eval/tasks/megabench/requirements.txt",
+      "overrides": "security/overrides.txt",
+      "lock": "security/locks/megabench-py311-linux.txt",
+      "allowed_source_audit_skips": []
+    },
+    "livebench": {
+      "manifest": "MHA2MLA-VLM/lmms-eval/tools/live_bench/pyproject.toml",
+      "overrides": "security/overrides.txt",
+      "lock": "security/locks/livebench-py311-linux.txt",
+      "allowed_source_audit_skips": []
+    },
+    "llava-reference": {
+      "manifest": "MHA2MLA-VLM/lmms-eval/miscs/llava_repr_requirements.txt",
+      "overrides": "security/overrides.txt",
+      "lock": "security/locks/llava-reference-py311-linux.txt",
+      "allowed_source_audit_skips": []
+    },
+    "tinyllava-reference": {
+      "manifest": "MHA2MLA-VLM/lmms-eval/miscs/tinyllava_repr_requirements.txt",
+      "overrides": "security/overrides.txt",
+      "lock": "security/locks/tinyllava-reference-py311-linux.txt",
+      "allowed_source_audit_skips": []
+    }
+  }
+}

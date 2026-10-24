@@ -28,3 +28,33 @@ jobs:
         run: python -m pip install nltk==3.10.4
       - name: Check evaluation primitives and resource sandbox
         run: python scripts/check_nltk_security.py
+
+  runtime-security-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install patched CPU tensor stack
+        run: |
+          python -m pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install transformers==5.10.4
+      - name: Check safe caches, checkpoints, and MLA forward/backward
+        run: python -m unittest discover -s tests -v
+
+  dependency-security:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [mha2mla, mha2mla-vlm, mlafication, lmms-eval, megabench, livebench, llava-reference, tinyllava-reference]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency validation tools
+        run: python -m pip install uv==0.13.5 pip-audit==2.10.1
+      - name: Resolve locked environment and audit package releases
+        run: python scripts/check_dependencies.py "${{ matrix.profile }}"

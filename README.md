@@ -43,7 +43,7 @@ cd MHA2MLA
 # cd MLAfication
 ```
 
-Create a separate Python environment for each project and follow its README. Run project commands from that project's directory: configuration, data, rank-tensor, and output paths are relative to it. The ACL/AAAI implementations target an older stack than the MLAfication implementation; install the requirements for the selected project.
+Create a separate Python environment for each project and follow its README. Run project commands from that project's directory: configuration, data, rank-tensor, and output paths are relative to it. Security updates use patched runtime requirements in all three projects. Follow each project's installation command, including the explicit overrides needed by historical framework metadata. See the [dependency security guide](security/README.md) for validation scope.
 
 For MLAfication, start with [standard MHA/GQA conversion](MLAfication/mha_gqa/) or [QKNorm conversion](MLAfication/qknorm/). The [migration guide](docs/MIGRATION.md) maps the former repository layouts to their new locations.
 

@@ -36,13 +36,20 @@ We use different datasets for different models:
 
 ## Environment
 
+The requirements now use patched dependency versions. The installation command
+uses explicit overrides for historical evaluation/training framework metadata
+that otherwise forces vulnerable NLTK, Protobuf, datasets, or tensor-stack
+versions. Select a CUDA-enabled PyTorch build compatible with your GPU driver.
+The Linux/Python 3.11 resolution and CPU security checks are recorded in
+[the dependency policy](../security/dependency-policy.json).
+
 Install pytorch and other packages.
 
 ```sh
 conda create -n mha2mla-vlm python=3.11
 conda activate mha2mla-vlm
-pip install torch==2.4.0 torchvision==0.19.0
-pip install -r requirements.txt
+python -m pip install "uv>=0.13.5"
+uv pip install --overrides ../security/overrides.txt -r requirements.txt
 ```
 
 ## Training
@@ -91,6 +98,9 @@ bash "src/mha2mla-vlm/${MODEL_IMPL}/scripts/stage2.sh"
 ## Evaluation
 
 Evaluation uses the bundled, modified [lmms-eval](lmms-eval/) implementation.
+Response caching uses a JSON-only SQLite table; existing pickle-backed tables
+are preserved but are never deserialized. Cached responses are regenerated
+when migrating to the new table.
 The launchers put it and the selected model adapter on `PYTHONPATH`, preserving
 the MLA modifications in `llava_hf.py` and `qwen2_5_vl.py`.
 
@@ -107,9 +117,9 @@ MODEL_PATH=/path/to/llavanext/stage2_ckpt NPROC_PER_NODE=4 \
   bash eval/llavanext/eval_quant.sh
 ```
 
-The published environment and experiment configurations are retained. This
-repository reorganization has been checked statically; it does not constitute
-a new GPU reproduction of the paper's results.
+The experiment configurations are retained. Dependency resolution and CPU
+security checks pass for the patched environments; GPU training and evaluation
+have not been rerun as part of this update.
 
 ## Citation
 

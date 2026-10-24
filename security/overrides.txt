@@ -1,0 +1,7 @@
+# Historical LightEval and Swift metadata caps conflict with security updates.
+# Use uv's explicit overrides, not pip's ordinary constraints, when installing
+# those framework packages. Runtime checks cover the APIs used by this repo.
+nltk==3.10.4
+protobuf>=5.29.6
+datasets==5.0.1
+fsspec[http]==2026.6.0

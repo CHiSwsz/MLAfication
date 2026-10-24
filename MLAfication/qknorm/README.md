@@ -20,8 +20,9 @@ Run the commands below from this implementation directory (`MLAfication/qknorm/`
 
 ## Workflow
 
-1. Install the environment from the parent-project [`requirements.txt`](../requirements.txt) after
-   selecting the CUDA-enabled PyTorch build for the host.
+1. Follow the parent-project [environment installation](../README.md#environment),
+   including its security overrides, after selecting the CUDA-enabled PyTorch
+   build for the host.
 2. Set `MHA2MLA_DATA_PATH` and generate MLA initialization tensors. The same
    entry point detects dense Qwen3 and Qwen3-MoE from the model config:
 

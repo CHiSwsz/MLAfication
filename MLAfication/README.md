@@ -26,18 +26,22 @@ The MLAfication checkpoints are available in the
 ## Environment
 
 Use Python 3.11 and install a CUDA-enabled PyTorch build matching the host
-driver. The paper's serving environment used PyTorch 2.11 with CUDA 12.8.
+driver. The paper's original serving environment used PyTorch 2.11 with CUDA 12.8;
+the requirements now select patched versions. See [the dependency policy](../security/dependency-policy.json)
+for the validated Linux resolution and security-check scope.
 
 ```bash
-pip install -r requirements.txt
-pip install --no-deps lighteval==0.6.2
+python -m pip install "uv>=0.13.5"
+uv pip install --overrides ../security/lighteval-overrides.txt -r requirements.txt
 ```
 
-The code targets Transformers 5.3 and Lighteval 0.6.2. Lighteval 0.6.2 is
-installed without dependency resolution because its historical package
-metadata caps PyTorch below 2.5; `requirements.txt` supplies the compatible
-runtime dependencies explicitly. Hugging Face tokens for gated models should
-be provided through `HF_TOKEN`; credentials are never read from source files.
+The patched runtime targets PyTorch 2.13, Transformers 5.10.4, NLTK 3.10.4,
+and Lighteval 0.6.2. Lighteval 0.6.2 is
+installed using explicit security overrides because its historical package
+metadata pins vulnerable NLTK/Protobuf releases and caps PyTorch below 2.5.
+`requirements.txt` supplies the patched runtime dependencies. Hugging Face
+tokens for gated models should be provided through `HF_TOKEN`; credentials
+are never read from source files.
 
 ## Calibration data
 

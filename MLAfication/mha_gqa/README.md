@@ -18,8 +18,9 @@ Run the commands below from this implementation directory (`MLAfication/mha_gqa/
 
 ## Workflow
 
-1. Install the environment from the parent-project [`requirements.txt`](../requirements.txt) after
-   selecting the CUDA-enabled PyTorch build for the host.
+1. Follow the parent-project [environment installation](../README.md#environment),
+   including its security overrides, after selecting the CUDA-enabled PyTorch
+   build for the host.
 2. Set `MHA2MLA_DATA_PATH` and generate MLA initialization tensors. SVDLLM V2
    is the default; model paths and experimental parameters are command-line
    options rather than source edits:

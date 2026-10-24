@@ -165,7 +165,12 @@ bash examples/models/llava_next.sh
 bash examples/models/tensor_parallel.sh
 ```
 
-**Evaluation with SGLang for bigger model (llava-next-72b)**
+**Optional SGLang backend (excluded from the patched environments)**
+
+SGLang is not installed by the maintained requirements: its current Outlines
+dependency pulls an unpatched DiskCache release. Use the Hugging Face or vLLM
+backends above/below for the audited environments. The following upstream
+example requires a separately maintained SGLang environment.
 
 ```bash
 bash examples/models/sglang.sh

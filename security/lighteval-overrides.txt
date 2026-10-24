@@ -1,0 +1,6 @@
+-r overrides.txt
+# The archived LightEval metadata caps torch below 2.5; the model entry points
+# use this repository's patched PyTorch/torchvision pair instead.
+torch==2.13.0
+# The same legacy metric metadata pins spaCy before NumPy 2 support.
+spacy==3.8.16
