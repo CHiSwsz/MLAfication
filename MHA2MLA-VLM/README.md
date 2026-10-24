@@ -117,9 +117,9 @@ MODEL_PATH=/path/to/llavanext/stage2_ckpt NPROC_PER_NODE=4 \
   bash eval/llavanext/eval_quant.sh
 ```
 
-The published environment and experiment configurations are retained. This
-repository reorganization has been checked statically; it does not constitute
-a new GPU reproduction of the paper's results.
+The experiment configurations are retained. Dependency resolution and CPU
+security checks pass for the patched environments; GPU training and evaluation
+have not been rerun as part of this update.
 
 ## Citation
 
