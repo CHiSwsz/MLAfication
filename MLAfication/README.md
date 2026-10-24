@@ -4,7 +4,7 @@
 
 [← All MLAfication projects](../README.md)
 
-**Paper status:** under review. The arXiv link will be added after the manuscript is announced. Manuscript metadata is available in [CITATIONS.bib](../CITATIONS.bib).
+**Paper:** [arXiv:2610.17202](https://arxiv.org/abs/2610.17202). Under review. Citation metadata is available in [CITATIONS.bib](../CITATIONS.bib).
 
 Run the commands below from this `MLAfication/` project directory inside the unified repository. Use a separate environment from the ACL 2025 and AAAI 2026 implementations.
 
