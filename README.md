@@ -10,11 +10,12 @@ This is the continuation of **MHA2MLA**, now organized as one repository for thr
 | --- | --- | --- | --- | --- |
 | **MHA2MLA** | **ACL 2025** | Convert pretrained MHA/GQA LLMs to MLA using partial RoPE and joint KV SVD. | [Proceedings](https://aclanthology.org/2025.acl-long.1597/) · [arXiv](https://arxiv.org/abs/2502.14837) | [MHA2MLA](MHA2MLA/) |
 | **MHA2MLA-VLM** | **AAAI 2026** | Modality-adaptive partial RoPE and modality-decoupled SVD for LLaVA-1.5, LLaVA-NeXT, and Qwen2.5-VL. | [Proceedings](https://ojs.aaai.org/index.php/AAAI/article/view/40319) · [arXiv](https://arxiv.org/abs/2601.11464) | [MHA2MLA-VLM](MHA2MLA-VLM/) |
-| **MLAfication** | **Under review** | Contribution-aware partial RoPE, activation-aware SVD initialization, and recovery training for standard MHA/GQA and QKNorm-based dense/MoE models. | arXiv link coming soon | [MLAfication](MLAfication/) |
+| **MLAfication** | **Preprint (under review)** | Contribution-aware partial RoPE, activation-aware SVD initialization, and recovery training for standard MHA/GQA and QKNorm-based dense/MoE models. | [arXiv](https://arxiv.org/abs/2610.17202) | [MLAfication](MLAfication/) |
 
 ## 📰 News
 
-- **[2026.10.13]** Consolidated the three projects into **MLAfication**, continuing the original MHA2MLA repository. MLAfication's manuscript is under review; its arXiv link will be added after announcement.
+- **[2026.10.24]** Added the [MLAfication preprint](https://arxiv.org/abs/2610.17202) and its citation.
+- **[2026.10.13]** Consolidated the three projects into **MLAfication**, continuing the original MHA2MLA repository.
 - **[2026.03.14]** MHA2MLA-VLM published in the **AAAI 2026** proceedings.
 - **[2026.01.22]** Released MHA2MLA-VLM checkpoints derived from Qwen2.5-VL-7B.
 - **[2025.07]** MHA2MLA published at **ACL 2025**.
@@ -58,7 +59,7 @@ Model weights and datasets are downloaded separately. Existing small rank-select
 
 ## 📚 Citation
 
-Please cite the paper corresponding to the code you use. All entries are also available in [CITATIONS.bib](CITATIONS.bib); the MLAfication entry currently uses the manuscript metadata and will be updated with its arXiv identifier.
+Please cite the paper corresponding to the code you use. All entries are also available in [CITATIONS.bib](CITATIONS.bib).
 
 ```bibtex
 @inproceedings{ji-etal-2025-towards,
@@ -85,14 +86,17 @@ Please cite the paper corresponding to the code you use. All entries are also av
 }
 ```
 
-**MLAfication manuscript:** *MLAfication: Efficiently Enabling High-Fidelity MLA for Modern LLMs* — Zile Wang, Zhide Xie, and Tao Ji. Under review; arXiv announcement pending.
+**MLAfication manuscript:** *MLAfication: Efficiently Enabling High-Fidelity MLA for Modern LLMs* — Zile Wang, Zhide Xie, and Tao Ji. [arXiv:2610.17202](https://arxiv.org/abs/2610.17202). Under review.
 
 ```bibtex
-@unpublished{wang2026mlafication,
+@misc{wang2026mlafication,
   title = {MLAfication: Efficiently Enabling High-Fidelity MLA for Modern LLMs},
   author = {Wang, Zile and Xie, Zhide and Ji, Tao},
   year = {2026},
-  note = {Manuscript under review; arXiv announcement pending}
+  eprint = {2610.17202},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.LG},
+  url = {https://arxiv.org/abs/2610.17202}
 }
 ```
 

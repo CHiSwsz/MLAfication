@@ -57,6 +57,7 @@ These validate project layout, owned documentation links, Python syntax, and
 shell syntax. They do not run training, download datasets, or validate GPU
 numerics/performance. Paper-reproduction commands remain project-specific.
 
-The third paper is listed as **under review**. The title and authors are included from the prepared manuscript metadata.
-Add its arXiv identifier and update the citation after announcement. Update the main README, the MLAfication project README, and
-`CITATIONS.bib` together; no placeholder arXiv URL is published.
+The third paper is available as [arXiv:2610.17202](https://arxiv.org/abs/2610.17202)
+and remains listed as **under review**. Its title, authors, and arXiv citation
+are included in the main README, the MLAfication project README, and
+`CITATIONS.bib`. Keep those entries consistent when updating publication metadata.
