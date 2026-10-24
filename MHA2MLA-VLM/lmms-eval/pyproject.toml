@@ -45,7 +45,7 @@ dependencies = [
     "opencv-python-headless",
     "av",
     "hf_transfer",
-    "nltk",
+    "nltk>=3.10.4,<4",
     "sentencepiece==0.1.99",
     "yt-dlp",
     "pycocoevalcap",
