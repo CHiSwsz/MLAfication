@@ -108,7 +108,7 @@ def patch_model(model, model_args, mha2mla_args):
 
 def patch_model_stage2_multimodal(model, model_args, mha2mla_args):
     if mha2mla_args.svd_init_weight_path:
-        SVD_weight = torch.load(mha2mla_args.svd_init_weight_path)
+        SVD_weight = torch.load(mha2mla_args.svd_init_weight_path, weights_only=True)
 
     layers = None
     if isinstance(model, Qwen2_5_VLForConditionalGeneration):

@@ -75,7 +75,7 @@ def _load_indexed_state_dict(path):
         shard_loader = load_file
     elif os.path.exists(pytorch_index):
         index_path = pytorch_index
-        shard_loader = lambda shard_path: torch.load(shard_path, map_location="cpu")
+        shard_loader = lambda shard_path: torch.load(shard_path, map_location="cpu", weights_only=True)
     else:
         return None
 
@@ -115,7 +115,7 @@ def load_checkpoint(model, path, strict=True):
         return model.load_state_dict(load_file(single_file), strict=strict)
     if os.path.exists(single_bin_file):
         return model.load_state_dict(
-            torch.load(single_bin_file, map_location="cpu"), strict=strict
+            torch.load(single_bin_file, map_location="cpu", weights_only=True), strict=strict
         )
 
     if strict:

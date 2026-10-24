@@ -9,7 +9,6 @@ cd TinyLLaVA_Factory
 pip install --no-deps -U -e .
 
 # install all the requirements that require for reproduce llava results
-pip install torch==2.0.1 torchvision==0.15.2 --index-url https://download.pytorch.org/whl/cu118
 pip install -r tinyllava_repr_requirements.txt
 
 # Run and reproduce tinyllava best results!

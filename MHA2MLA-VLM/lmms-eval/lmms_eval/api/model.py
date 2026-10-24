@@ -5,7 +5,7 @@ import os
 from typing import List, Optional, Tuple, Type, TypeVar, Union
 
 from loguru import logger as eval_logger
-from sqlitedict import SqliteDict
+from lmms_eval.caching.json_cache import JsonCache
 from tqdm import tqdm
 
 from lmms_eval import utils
@@ -161,7 +161,7 @@ class CachingLMM:
         self.cache_db = cache_db
         if os.path.dirname(cache_db):
             os.makedirs(os.path.dirname(cache_db), exist_ok=True)
-        self.dbdict = SqliteDict(cache_db, autocommit=True)
+        self.dbdict = JsonCache(cache_db)
 
         # add hook to lm
         lm.set_cache_hook(self.get_cache_hook())

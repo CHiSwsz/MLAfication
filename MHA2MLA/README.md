@@ -37,13 +37,20 @@ Secondly, process the datasets according to https://github.com/huggingface/nanot
 
 ## Environment
 
+The requirements now use patched dependency versions. The installation command
+uses explicit overrides for historical evaluation/training framework metadata
+that otherwise forces vulnerable NLTK, Protobuf, datasets, or tensor-stack
+versions. Select a CUDA-enabled PyTorch build compatible with your GPU driver.
+The Linux/Python 3.11 resolution and CPU security checks are recorded in
+[the dependency policy](../security/dependency-policy.json).
+
 Install pytorch and other packages.
 
 ```sh
 conda create -n mha2mla python=3.11
 conda activate mha2mla
-pip install torch==2.4.0 torchvision==0.19.0
-pip install -r requirements.txt
+python -m pip install "uv>=0.13.5"
+uv pip install --overrides ../security/lighteval-overrides.txt -r requirements.txt
 ```
 
 ## Fine-Tuning

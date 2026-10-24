@@ -10,7 +10,7 @@ from torch.profiler import profile, ProfilerActivity, record_function
 
 import torch
 from transformers import AutoTokenizer, LlamaForCausalLM
-from transformers.cache_utils import DynamicCache, QuantizedCacheConfig,QuantizedCache
+from transformers.cache_utils import DynamicCache, QuantizedCache
 
 from deepspeed.profiling.flops_profiler import FlopsProfiler
 
@@ -20,14 +20,11 @@ def prefill(model, inputs, cache_implementation, cache_kwargs:dict|str):
         if isinstance(cache_kwargs, str):
             import json
             cache_kwargs = json.loads(cache_kwargs)
-        cache_config = {
-            "backend": cache_kwargs["backend"],
-            "nbits": cache_kwargs["nbits"],
-            "compute_dtype": model.dtype,
-            "device": model.device,
-        }
-        cache_config = QuantizedCacheConfig(**cache_config)
-        past_key_values = QuantizedCache(cache_config)
+        past_key_values = QuantizedCache(
+            backend=cache_kwargs["backend"].lower(),
+            config=model.config,
+            nbits=cache_kwargs["nbits"],
+        )
     else:
         past_key_values = DynamicCache()
 

@@ -1,7 +1,7 @@
 import argparse
 import os, sys
 
-from transformers.modeling_utils import load_sharded_checkpoint
+from transformers.trainer_utils import load_sharded_checkpoint
 
 from lighteval.models.utils import _get_dtype, _simplify_name, batched
 from lighteval.pipeline import (
