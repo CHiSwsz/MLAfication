@@ -90,7 +90,7 @@ git+https://github.com/huggingface/nanotron.git@2cde8f63519f15aa449803441ec70225
 nest-asyncio==1.6.0
 networkx==3.4.2
 ninja==1.11.1.3
-nltk==3.9.1
+nltk==3.10.4
 numba==0.60.0
 numpy==1.26.0
 nvidia-cublas-cu12==12.1.3.1

@@ -16,3 +16,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate layout, links, and syntax
         run: python3 scripts/check_repository.py
+
+  nltk-security-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install the patched NLTK release
+        run: python -m pip install nltk==3.10.4
+      - name: Check evaluation primitives and resource sandbox
+        run: python scripts/check_nltk_security.py
