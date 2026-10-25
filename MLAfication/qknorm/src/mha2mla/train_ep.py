@@ -22,7 +22,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 
 from ep_distill_utils import (
     FrozenEPTeacher, GlobalBatchSampler, accumulation_steps, atomic_json, cast_bf16_parameters, distillation_kl,
-    engine_config, expert_layout, export_hf_checkpoint, require_finite,
+    engine_config, expert_layout, export_hf_checkpoint, preserve_qwen_routing, require_finite, distributed_main,
 )
 from patching_mlafication import patch_mlafication
 from patching_mla_fwd import patch_mla_fwd_instance
@@ -129,6 +129,7 @@ def main():
             optimizer, lambda step: lr_multiplier(step, config)),
     )
     del student_model
+    preserve_qwen_routing(student.module)
     student.train()
     validate_engines(teacher, student, config)
     start_step = 0
@@ -232,4 +233,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    distributed_main(main)

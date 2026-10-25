@@ -49,6 +49,15 @@ def main():
         '--override_batch_size', str(config.get('commonsense_batch_size', 8)),
         '--custom_tasks', config['custom_tasks'], '--tasks', config['tasks_file'],
         '--output_dir', str(output / 'commonsense')])
+    common_results = sorted((output / 'commonsense').rglob('results_*.json'))
+    if not common_results:
+        raise RuntimeError('Commonsense did not produce a result file')
+    results = json.loads(common_results[-1].read_text())['results']
+    task_keys = {'ARC': 'arc:_average', 'HellaSwag': 'hellaswag', 'MMLU': 'mmlu',
+                 'OBQA': 'openbook_qa', 'PIQA': 'piqa', 'WinoGrande': 'winogrande'}
+    common = {name: results[f'custom|{key}|0']['acc_norm'] * 100 for name, key in task_keys.items()}
+    common['Avg@CS'] = sum(common.values()) / len(common)
+    (output / 'paper_commonsense.json').write_text(json.dumps(common, indent=2, allow_nan=False) + '\n')
     longbench = {
         'seed': 42, 'report_to': 'none', 'output_dir': str(output / 'longbench'),
         'per_device_eval_batch_size': 1, 'max_steps': 0,
@@ -61,6 +70,17 @@ def main():
     lb_config.write_text(yaml.safe_dump(longbench, sort_keys=False))
     run('longbench', [sys.executable, '-m', 'torch.distributed.run', '--standalone',
         '--nproc_per_node', world, str(here / 'longbench.py'), '--cfg_file', str(lb_config)])
+    scores = defaultdict(list)
+    for line in (output / 'longbench/lbv1_4k.jsonl').read_text().splitlines():
+        row = json.loads(line)
+        scores[row['dataset']].append(row['score'])
+    excluded = {'multifieldqa_zh', 'dureader', 'vcsum', 'lsht', 'passage_retrieval_zh'}
+    longbench_scores = {name: 100 * sum(values) / len(values) for name, values in scores.items()}
+    english = [value for name, value in longbench_scores.items() if name not in excluded]
+    if len(english) != 16 or len(scores) != 21:
+        raise RuntimeError('LongBench did not evaluate every expected dataset')
+    longbench_scores['Avg@LB'] = sum(english) / len(english)
+    (output / 'paper_longbench.json').write_text(json.dumps(longbench_scores, indent=2, allow_nan=False) + '\n')
     vio_output = output / 'vio.tsv'
     run('vio', [sys.executable, str(here / 'collect_moe_vio.py'),
         '--model_name_or_path', config['model_name_or_path'], '--ckpt', f'full={checkpoint}',

@@ -5,6 +5,9 @@ import math
 import os
 from pathlib import Path
 import shutil
+import types
+import sys
+import traceback
 
 import torch
 import torch.distributed as dist
@@ -64,6 +67,28 @@ def cast_bf16_parameters(model):
     return model
 
 
+def _qwen_router_forward(self, x, expert_bias=None):
+    """Retain Qwen's sorted top-k and BF16 routing weights after AutoEP packing."""
+    from deepspeed.moe.ep_router import count_tokens_per_expert
+    logits = self.gate(x)
+    probabilities = F.softmax(logits, dim=-1, dtype=torch.float32)
+    selected_weights, selected = torch.topk(probabilities, self.top_k, dim=-1, sorted=True)
+    if self.route_norm:
+        selected_weights = selected_weights / selected_weights.sum(dim=-1, keepdim=True)
+    counts = count_tokens_per_expert(selected, self.num_experts)
+    return selected_weights.to(logits.dtype), selected, counts
+
+
+def preserve_qwen_routing(model):
+    for layer in model.model.layers:
+        router = layer.mlp.router
+        if router.score_func != 'softmax' or router.route_scale != 1.0 or router.num_expert_groups is not None:
+            raise ValueError('Only the original Qwen softmax top-k router is supported')
+        if layer.mlp.expert_bias is not None and torch.count_nonzero(layer.mlp.expert_bias).item():
+            raise ValueError('Load-balancing bias would change the distillation control')
+        router.forward = types.MethodType(_qwen_router_forward, router)
+
+
 class FrozenEPTeacher(torch.nn.Module):
     """AutoEP inference without DeepSpeed's optimizer construction path."""
 
@@ -86,6 +111,7 @@ class FrozenEPTeacher(torch.nn.Module):
         auto_ep.replace_moe_layers(specs, ep_size=ep_size, ep_rank=dist.get_rank(group=group))
         for layer in model.model.layers:
             layer.mlp.set_deepspeed_parallelism()
+        preserve_qwen_routing(model)
         self.module = cast_bf16_parameters(model).to(device).requires_grad_(False).eval()
         self.eval()
 
@@ -257,3 +283,16 @@ def export_hf_checkpoint(engine, tokenizer, destination, layout, mla_tensor_path
 def require_finite(value, label):
     if not math.isfinite(float(value)):
         raise RuntimeError(f"Non-finite {label}: {value}")
+
+
+def distributed_main(function):
+    try:
+        function()
+    except Exception:
+        # A failed worker must exit before Python destroys NCCL objects: peers
+        # may be in another collective and destruction can otherwise hang.
+        # torchrun observes this exit and terminates the remaining workers.
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(1)

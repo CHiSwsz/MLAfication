@@ -9,6 +9,13 @@ balancing loss or token dropping is added. This control changes more than
 router freezing alone; a quality difference does not by itself isolate a
 causal effect of router freezing.
 
+The frozen teacher uses AutoEP directly without constructing a DeepSpeed
+optimizer. Routers retain Transformers' sorted top-k selection and BF16
+routing weights; rotary-frequency buffers retain FP32 precision. Grouped
+BF16 reductions need not be bitwise identical to sequential expert reductions:
+the smoke test checks output-norm error and independently compares averaged
+gradients, including the expert-parallel scaling factor.
+
 Use a separate environment with PyTorch 2.13, Transformers 5.10.4, Accelerate
 1.15, and the Nanoset revision in [requirements](../requirements.txt).
 The original DeepSpeed 0.15 environment is insufficient: its explicit MoE
