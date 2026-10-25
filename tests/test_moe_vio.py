@@ -16,6 +16,21 @@ spec.loader.exec_module(vio)
 
 
 class MoeVioTests(unittest.TestCase):
+    def test_bf16_evaluation_preserves_long_position_rotary_values(self):
+        config = Qwen3MoeConfig(vocab_size=32, hidden_size=32, intermediate_size=64,
+                               moe_intermediate_size=32, num_hidden_layers=1,
+                               num_attention_heads=2, num_key_value_heads=1, head_dim=16,
+                               num_experts=8, num_experts_per_tok=4)
+        model = Qwen3MoeForCausalLM(config)
+        hidden = torch.zeros(1, 3, 32, dtype=torch.bfloat16)
+        positions = torch.tensor([[0, 1024, 4096]])
+        expected = model.model.rotary_emb(hidden, positions)
+        converted = vio.move_model(model, device='cpu', dtype=torch.bfloat16)
+        actual = converted.model.rotary_emb(hidden, positions)
+        self.assertTrue(all(p.dtype == torch.bfloat16 for p in converted.parameters()))
+        for value, reference in zip(actual, expected):
+            torch.testing.assert_close(value, reference, rtol=0, atol=0)
+
     def test_router_hooks_count_tokens_and_identical_routes(self):
         torch.manual_seed(123)
         config = Qwen3MoeConfig(vocab_size=32, hidden_size=32, intermediate_size=64,

@@ -106,3 +106,13 @@ the local datasets and task definitions first. Small-model checks exercise all
 Commonsense task entries, all 21 LongBench datasets and cached batched decoding,
 and standalone baseline/full-checkpoint Vio. These are interface checks, not
 benchmark scores for the trained 30B model.
+
+Training and evaluation preserve FP32 RoPE frequency buffers when casting
+weights to BF16. Older evaluation code cast these buffers too, which can
+change rotations at long positions. Re-evaluate comparison checkpoints with
+the same evaluator/runtime when comparing scores; the Vio pipeline does this
+for the baseline, PEFT and full-parameter models automatically.
+Set `evaluate_peft_reference: true` in the evaluation JSON to also re-evaluate
+the existing PEFT checkpoint on Commonsense and LongBench. Its outputs go to
+`peft-reference/`, with both models' summaries in
+`paper_quality_comparison.json`. This performs no additional training.

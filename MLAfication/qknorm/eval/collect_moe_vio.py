@@ -30,7 +30,7 @@ for extra_path in (str(SRC_MHA2MLA_DIR), str(GEN_DIR), str(REPO_ROOT)):
     if extra_path not in sys.path:
         sys.path.insert(0, extra_path)
 
-from helpers import load_checkpoint
+from helpers import cast_model_parameters, load_checkpoint
 
 
 @dataclass
@@ -441,7 +441,7 @@ def load_model(model_name_or_path, ckpt_path, dtype, device, trust_remote_code):
 def move_model(model, device, dtype):
     if dtype == "auto":
         return model.to(device).eval()
-    return model.to(device=device, dtype=dtype).eval()
+    return cast_model_parameters(model, dtype).to(device).eval()
 
 
 def build_dataloader(tokenizer, args):
