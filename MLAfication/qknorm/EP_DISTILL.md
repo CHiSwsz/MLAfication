@@ -98,3 +98,11 @@ identifier). It runs the supplied original Commonsense tasks, BF16 LongBench
 at 4K, then Vio for the baseline, full model and PEFT checkpoint on the same
 128 held-out samples (seed 42, sample offset 512000). `paper_vio.json` computes
 the maximum and mean of the per-layer maxima, matching Table 8.
+
+The original local benchmark builders were validated with LightEval 0.6.2 and
+Datasets 3.6.0 in the separate experiment environment. Newer Datasets versions
+do not support those Python dataset builders; using one requires migrating
+the local datasets and task definitions first. Small-model checks exercise all
+Commonsense task entries, all 21 LongBench datasets and cached batched decoding,
+and standalone baseline/full-checkpoint Vio. These are interface checks, not
+benchmark scores for the trained 30B model.
