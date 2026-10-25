@@ -303,8 +303,6 @@ class ExactKNormTests(unittest.TestCase):
             scheduler.step()
 
     def test_early_stop_keeps_historical_sampler_population(self):
-        from accelerate.data_loader import SeedableRandomSampler
-
         class FakeNanoset(torch.utils.data.Dataset):
             def __init__(self, **kwargs):
                 self.settings = kwargs
@@ -333,12 +331,16 @@ class ExactKNormTests(unittest.TestCase):
             self.assertEqual(dataset.settings["random_seed"], 42)
             self.assertEqual(dataset.settings["token_size"], 4)
             historical = torch.randperm(307200, generator=torch.Generator().manual_seed(42))
-            observed = torch.tensor(list(SeedableRandomSampler(dataset, data_seed=42)))
+            observed = torch.tensor(list(torch.utils.data.RandomSampler(
+                dataset, generator=torch.Generator().manual_seed(42)
+            )))
             self.assertTrue(torch.equal(observed[:153600], historical[:153600]))
             data_args.data_sampling_steps = None
             short = helpers.load_dataset(data_args, train_args, Tokenizer())
             self.assertEqual(len(short), 153600)
-            wrong = torch.tensor(list(SeedableRandomSampler(short, data_seed=42)))
+            wrong = torch.tensor(list(torch.utils.data.RandomSampler(
+                short, generator=torch.Generator().manual_seed(42)
+            )))
             self.assertFalse(torch.equal(wrong, historical[:153600]))
             for sampling_steps, offset in ((2399, 0), (0, 0), (4800, 1)):
                 data_args.data_sampling_steps = sampling_steps
