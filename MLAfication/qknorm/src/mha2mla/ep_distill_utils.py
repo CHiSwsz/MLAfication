@@ -57,6 +57,42 @@ def distillation_kl(student, teacher, temperature=1.0, block_rows=128):
     return _ChunkedKL.apply(student, teacher.detach(), temperature, block_rows)
 
 
+def cast_bf16_parameters(model):
+    # Keep rotary-frequency buffers in FP32, including newly loaded HF models.
+    for parameter in model.parameters():
+        parameter.data = parameter.data.to(dtype=torch.bfloat16)
+    return model
+
+
+class FrozenEPTeacher(torch.nn.Module):
+    """AutoEP inference without DeepSpeed's optimizer construction path."""
+
+    def __init__(self, model, config, device):
+        super().__init__()
+        from deepspeed.module_inject.auto_ep import AutoEP
+        from deepspeed.module_inject.auto_ep_config import AutoEPConfig
+        from deepspeed.utils import groups
+
+        ep_size = config['ep_size']
+        if dist.get_world_size() != ep_size:
+            raise ValueError('Teacher requires world_size == ep_size')
+        groups._create_expert_and_data_parallel(expert_parallel_size_=ep_size)
+        group = groups._get_expert_parallel_group(f'ep_size_{ep_size}')
+        options = engine_config(config, 1, dist.get_world_size(), teacher=True)['expert_parallel']
+        auto_ep = AutoEP(model, AutoEPConfig(**options))
+        specs = auto_ep.ep_parser()
+        if not specs:
+            raise RuntimeError('No teacher MoE layers detected')
+        auto_ep.replace_moe_layers(specs, ep_size=ep_size, ep_rank=dist.get_rank(group=group))
+        for layer in model.model.layers:
+            layer.mlp.set_deepspeed_parallelism()
+        self.module = cast_bf16_parameters(model).to(device).requires_grad_(False).eval()
+        self.eval()
+
+    def forward(self, *args, **kwargs):
+        return self.module(*args, **kwargs)
+
+
 def accumulation_steps(global_batch, micro_batch, world_size):
     if min(global_batch, micro_batch, world_size) < 1 or global_batch % (micro_batch * world_size):
         raise ValueError("global_batch must be divisible by micro_batch * world_size")

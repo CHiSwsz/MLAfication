@@ -10,7 +10,7 @@ import torch
 import torch.distributed as dist
 from transformers import Qwen3MoeConfig, Qwen3MoeForCausalLM
 
-from ep_distill_utils import engine_config, export_hf_checkpoint, expert_layout
+from ep_distill_utils import FrozenEPTeacher, cast_bf16_parameters, engine_config, export_hf_checkpoint, expert_layout
 from patching_mlafication import patch_mlafication
 from patching_mla_fwd import patch_mla_fwd_instance
 
@@ -55,7 +55,7 @@ def main():
         patch_mlafication(model, config, SimpleNamespace(mla_tensor_path=str(root / 'mla.pt')))
         patch_mla_fwd_instance(model)
         model.config.mha2mla = {'mla_tensor_path': str(root / 'mla.pt'), 'checkpoint_type': 'full'}
-        return model.to(dtype=torch.bfloat16)
+        return cast_bf16_parameters(model)
 
     reference = make_model().cuda().eval()
     tokens = (torch.arange(32, device='cuda').reshape(1, 32) + rank + 1) % 256
@@ -63,8 +63,7 @@ def main():
         expected = reference(tokens).logits
     cfg = {'global_batch_size': 8, 'ep_size': 8, 'learning_rate': .01, 'max_grad_norm': 1.0}
     teacher_model = make_model().requires_grad_(False)
-    teacher, _, _, _ = deepspeed.initialize(
-        model=teacher_model, config=engine_config(cfg, 1, world, teacher=True))
+    teacher = FrozenEPTeacher(teacher_model, cfg, torch.device('cuda'))
     teacher.eval()
     with torch.no_grad():
         torch.testing.assert_close(teacher(tokens).logits, expected, rtol=.03, atol=.006)

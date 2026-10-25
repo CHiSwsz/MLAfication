@@ -21,7 +21,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 
 from ep_distill_utils import (
-    GlobalBatchSampler, accumulation_steps, atomic_json, distillation_kl,
+    FrozenEPTeacher, GlobalBatchSampler, accumulation_steps, atomic_json, cast_bf16_parameters, distillation_kl,
     engine_config, expert_layout, export_hf_checkpoint, require_finite,
 )
 from patching_mlafication import patch_mlafication
@@ -109,8 +109,7 @@ def main():
         return model
 
     teacher_model = load_base().requires_grad_(False).eval()
-    teacher, _, _, _ = deepspeed.initialize(
-        model=teacher_model, config=engine_config(config, args.micro_batch, world, teacher=True))
+    teacher = FrozenEPTeacher(teacher_model, config, device)
     teacher.eval()
     del teacher_model
     gc.collect()
@@ -118,7 +117,7 @@ def main():
     layout = expert_layout(student_model)
     patch_mlafication(student_model, student_model.config, SimpleNamespace(**config))
     patch_mla_fwd_instance(student_model)
-    student_model.to(dtype=torch.bfloat16).requires_grad_(True)
+    cast_bf16_parameters(student_model).requires_grad_(True)
     student_model.config.mha2mla = {
         'model_name_or_path': config['model_name_or_path'], 'mla_tensor_path': config['mla_tensor_path'],
         'is_baseline': False, 'checkpoint_type': 'full',
