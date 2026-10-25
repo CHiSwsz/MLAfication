@@ -62,3 +62,11 @@ latency, throughput, and peak memory without a YAML file.
 
 Do not commit credentials, model weights, generated tensors, checkpoints,
 datasets, logs, virtual environments, or evaluation outputs.
+
+For Table 1, the original `gen/compare_expect.py` compares mean key RMS norms
+across 1K–16K contexts after Partial-RoPE/SVD initialization. The same pass now
+also prints `Ek_std`, the population standard deviation across valid tokens
+for each KV head in the middle layer. It uses the existing calibration dataset
+settings; run with `MODEL_NAME_OR_PATH=/path/to/model NUM_SAMPLES=64 torchrun
+--standalone --nproc_per_node=1 gen/compare_expect.py` in the original experiment
+environment. `NUM_SAMPLES` defaults to the original script's 128 samples.
