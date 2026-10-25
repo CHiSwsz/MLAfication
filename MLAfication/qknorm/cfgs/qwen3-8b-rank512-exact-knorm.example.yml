@@ -11,6 +11,9 @@ output_dir: /path/to/new-experiments/qwen3-8b-rank512-exact-knorm
 run_name: qwen3-8b-rank512-exact-knorm
 report_to: none
 seed: 42
+data_seed: 42
+accelerator_config:
+  use_seedable_sampler: true
 bf16: true
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
@@ -51,6 +54,8 @@ is_nanoset: true
 sequence_length: 4096
 trainset_seed: 42
 data_offset_steps: 0
+# Keep the historical shuffle population (307200 sequences), stopping at 2400.
+data_sampling_steps: 4800
 dataset_folders:
   - /path/to/MHA2MLA-corpus-qwen2/fineweb-edu-dedup/
   - /path/to/MHA2MLA-corpus-qwen2/cosmopedia-v2/

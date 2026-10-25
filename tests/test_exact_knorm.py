@@ -137,7 +137,7 @@ class ExactKNormTests(unittest.TestCase):
             k, v = k.repeat_interleave(2, dim=1), v.repeat_interleave(2, dim=1)
             scores = q @ k.transpose(-1, -2) * attn.scaling
             if attention_mask is not None:
-                scores = scores + attention_mask
+                scores = scores + attention_mask[..., :k.shape[-2]]
             weights = scores.softmax(dim=-1)
             result = (weights @ v).transpose(1, 2).reshape(b, length, 32)
             return attn.o_proj(result), weights
@@ -173,8 +173,25 @@ class ExactKNormTests(unittest.TestCase):
                     cache = output.past_key_values
                     chunks.append(output.logits)
                 torch.testing.assert_close(torch.cat(chunks, dim=1), expected, rtol=2e-5, atol=2e-6)
-                self.assertEqual(tuple(cache.layers[0].keys.shape), (2, 2, 5, 8))
-                self.assertEqual(tuple(cache.layers[0].values.shape), (2, 2, 5, 8))
+                if hasattr(cache, "layers"):
+                    keys, values = cache.layers[0].keys, cache.layers[0].values
+                else:
+                    keys, values = cache.key_cache[0], cache.value_cache[0]
+                self.assertEqual(tuple(keys.shape), (2, 2, 5, 8))
+                self.assertEqual(tuple(values.shape), (2, 2, 5, 8))
+
+    def test_legacy_cache_keyword_is_consumed(self):
+        model = self.model().eval()
+        attn = model.model.layers[0].self_attn
+        hidden = torch.randn(2, 3, 32)
+        position_embeddings = (torch.ones(2, 3, 8), torch.zeros(2, 3, 8))
+        cache = unittest.mock.Mock()
+        cache.update.side_effect = lambda key, value, *args: (key, value)
+        attn(hidden, position_embeddings, None, past_key_value=cache)
+        cache.update.assert_called_once()
+        with self.assertRaisesRegex(ValueError, "Conflicting"):
+            attn(hidden, position_embeddings, None,
+                 past_key_value=cache, past_key_values=unittest.mock.Mock())
 
     def test_qkv_distillation_updates_key_norm_and_keeps_backbone_frozen(self):
         model = self.model().train()
@@ -261,6 +278,10 @@ class ExactKNormTests(unittest.TestCase):
         self.assertEqual(8 * config["per_device_train_batch_size"] * config["gradient_accumulation_steps"], 64)
         self.assertEqual(config["max_steps"], 2400)
         self.assertEqual(config["max_steps"] * 64 * config["sequence_length"], 629145600)
+        self.assertEqual(config["data_sampling_steps"], 4800)
+        self.assertEqual(config["data_seed"], 42)
+        self.assertTrue(config["accelerator_config"]["use_seedable_sampler"])
+        self.assertEqual(config["dataset_weights"], [0.7, 0.15, 0.08, 0.06, 0.01])
         # The main-table checkpoint was saved halfway through a 4800-step run.
         # Match its observed LR history, not a rescaled 2400-step schedule.
         optimizer = torch.optim.AdamW(
@@ -280,6 +301,50 @@ class ExactKNormTests(unittest.TestCase):
             )
             optimizer.step()
             scheduler.step()
+
+    def test_early_stop_keeps_historical_sampler_population(self):
+        from accelerate.data_loader import SeedableRandomSampler
+
+        class FakeNanoset(torch.utils.data.Dataset):
+            def __init__(self, **kwargs):
+                self.settings = kwargs
+
+            def __len__(self):
+                return self.settings["train_split_num_samples"]
+
+            def __getitem__(self, index):
+                return index
+
+        class Tokenizer:
+            def __len__(self):
+                return 151936
+
+        data_args = arguments.MHA2MLADataArguments(
+            is_nanoset=True, sequence_length=4096, data_sampling_steps=4800
+        )
+        train_args = SimpleNamespace(
+            per_device_train_batch_size=2, gradient_accumulation_steps=4, max_steps=2400
+        )
+        with patch.dict("os.environ", {"WORLD_SIZE": "8"}), patch.dict("sys.modules", {
+            "nanotron.data.nanoset": SimpleNamespace(Nanoset=FakeNanoset),
+        }):
+            dataset = helpers.load_dataset(data_args, train_args, Tokenizer())
+            self.assertEqual(len(dataset), 307200)
+            self.assertEqual(dataset.settings["random_seed"], 42)
+            self.assertEqual(dataset.settings["token_size"], 4)
+            historical = torch.randperm(307200, generator=torch.Generator().manual_seed(42))
+            observed = torch.tensor(list(SeedableRandomSampler(dataset, data_seed=42)))
+            self.assertTrue(torch.equal(observed[:153600], historical[:153600]))
+            data_args.data_sampling_steps = None
+            short = helpers.load_dataset(data_args, train_args, Tokenizer())
+            self.assertEqual(len(short), 153600)
+            wrong = torch.tensor(list(SeedableRandomSampler(short, data_seed=42)))
+            self.assertFalse(torch.equal(wrong, historical[:153600]))
+            for sampling_steps, offset in ((2399, 0), (0, 0), (4800, 1)):
+                data_args.data_sampling_steps = sampling_steps
+                data_args.data_offset_steps = offset
+                with self.assertRaisesRegex(ValueError, "data_sampling_steps"):
+                    helpers.load_dataset(data_args, train_args, Tokenizer())
 
 
 if __name__ == "__main__":

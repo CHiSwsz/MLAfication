@@ -13,7 +13,10 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 import torch.distributed as dist
 from transformers import get_scheduler
-from transformers.trainer_utils import load_sharded_checkpoint
+try:
+    from transformers.trainer_utils import load_sharded_checkpoint
+except ImportError:  # Historical Transformers 4.x evaluation environment.
+    from transformers.modeling_utils import load_sharded_checkpoint
 from safetensors.torch import load_file
 from torch.utils.data import Subset
 
@@ -237,6 +240,18 @@ def load_dataset(data_args, train_args, tokenizer):
 
             # 底层 Nanoset 必须至少覆盖 [0, offset + run) 这段
             total_num_samples = offset_num_samples + run_num_samples
+
+            # RandomSampler shuffles the entire dataset. Shortening this length
+            # changes even the first batch, so an early-stop control must retain
+            # the original population, not merely the same Nanoset seed.
+            sampling_steps = getattr(data_args, "data_sampling_steps", None)
+            if sampling_steps is not None:
+                if data_offset_steps != 0 or sampling_steps <= 0 or sampling_steps < run_num_steps:
+                    raise ValueError(
+                        "data_sampling_steps must be positive and >= max_steps, "
+                        "with data_offset_steps=0"
+                    )
+                total_num_samples = global_batch_size * sampling_steps
 
             random_seed = data_args.trainset_seed
         else:

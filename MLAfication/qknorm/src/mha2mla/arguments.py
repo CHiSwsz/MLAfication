@@ -69,6 +69,13 @@ class MHA2MLADataArguments:
             "help": "Start reading the deterministic training data stream from this optimizer-step offset."
         },
     )
+    data_sampling_steps: Optional[int] = field(
+        default=None,
+        metadata={
+            "help": "Keep the original Nanoset/sampler population when stopping a run early. "
+                    "Must cover max_steps and cannot be combined with data_offset_steps."
+        },
+    )
 
 
 @dataclass

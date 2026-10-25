@@ -6,7 +6,10 @@ import re
 import string
 from collections import Counter, defaultdict
 from itertools import accumulate
-from transformers.trainer_utils import load_sharded_checkpoint
+try:
+    from transformers.trainer_utils import load_sharded_checkpoint
+except ImportError:  # Historical Transformers 4.x evaluation environment.
+    from transformers.modeling_utils import load_sharded_checkpoint
 from typing import TYPE_CHECKING, Optional
 from transformers import (
     HfArgumentParser,

@@ -66,6 +66,13 @@ def custom_Qwen3Attention_instance_forward(
     cache_position: Optional[torch.LongTensor] = None,
     **kwargs: Unpack[FlashAttentionKwargs],
 ):
+    # Transformers 4.x passes the cache under the singular attention argument.
+    # Consume it here instead of silently dropping cached keys during decoding.
+    legacy_cache = kwargs.pop("past_key_value", None)
+    if past_key_values is None:
+        past_key_values = legacy_cache
+    elif legacy_cache is not None and legacy_cache is not past_key_values:
+        raise ValueError("Conflicting past_key_value and past_key_values caches")
     input_shape = hidden_states.shape[:-1]
     num_kv_heads = self.config.num_key_value_heads
     num_q_heads = self.config.num_attention_heads
