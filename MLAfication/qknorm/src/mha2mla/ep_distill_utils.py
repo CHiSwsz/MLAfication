@@ -8,6 +8,7 @@ import shutil
 import types
 import sys
 import traceback
+import time
 
 import torch
 import torch.distributed as dist
@@ -223,8 +224,22 @@ def export_hf_checkpoint(engine, tokenizer, destination, layout, mla_tensor_path
     if dist.get_world_size() != engine.module.model.layers[0].mlp.ep_size:
         raise ValueError("Portable export currently requires world_size == ep_size")
     rank, world_size = dist.get_rank(), dist.get_world_size()
-    destination = Path(destination)
+    final_destination = Path(destination)
+    destination = final_destination.with_name(final_destination.name + '.incomplete')
+    already_complete = [False]
     if rank == 0:
+        marker = final_destination / 'export_complete.json'
+        if marker.exists() and json.loads(marker.read_text()) == metadata:
+            already_complete[0] = True
+        elif final_destination.exists():
+            raise FileExistsError(f'Export destination already exists with different or incomplete metadata: {final_destination}')
+    dist.broadcast_object_list(already_complete, src=0)
+    if already_complete[0]:
+        return
+    if rank == 0:
+        if destination.exists():
+            # Preserve an interrupted export for inspection; do not overwrite it.
+            destination.rename(destination.with_name(destination.name + f'-previous-{time.time_ns()}'))
         destination.mkdir(parents=True, exist_ok=False)
     dist.barrier()
     weight_map, total_size = {}, 0
@@ -277,6 +292,7 @@ def export_hf_checkpoint(engine, tokenizer, destination, layout, mla_tensor_path
         finally:
             model.config.mha2mla['mla_tensor_path'] = previous
         atomic_json(destination / 'export_complete.json', metadata)
+        destination.rename(final_destination)
     dist.barrier()
 
 

@@ -1,10 +1,16 @@
 """CPU numerical checks; the eight-GPU smoke test lives beside train_ep.py."""
 import importlib.util
+import json
 from pathlib import Path
+import tempfile
+from types import SimpleNamespace
 import unittest
 
 import torch
+import torch.distributed as dist
 import torch.nn.functional as F
+from safetensors.torch import load_file
+from transformers import Qwen3MoeConfig, Qwen3MoeForCausalLM
 
 PATH = Path(__file__).resolve().parents[1] / 'MLAfication/qknorm/src/mha2mla/ep_distill_utils.py'
 spec = importlib.util.spec_from_file_location('ep_utils', PATH)
@@ -13,6 +19,49 @@ spec.loader.exec_module(utils)
 
 
 class DistillationTests(unittest.TestCase):
+    def test_portable_export_roundtrip_and_interrupted_directory(self):
+        config = Qwen3MoeConfig(vocab_size=32, hidden_size=32, intermediate_size=32,
+                               moe_intermediate_size=16, num_hidden_layers=1, num_attention_heads=2,
+                               num_key_value_heads=1, head_dim=16, num_experts=4, num_experts_per_tok=2)
+        model = Qwen3MoeForCausalLM(config)
+        expected = {key: value.detach().clone() for key, value in model.state_dict().items()}
+        mlp = model.model.layers[0].mlp
+        packed = torch.nn.Module()
+        packed.ep_size = 1
+        packed.router = torch.nn.Module()
+        packed.router.gate = mlp.gate
+        packed.experts = torch.nn.Module()
+        for name, tensor in [('w1', mlp.experts.gate_up_proj[:, :16]),
+                             ('w3', mlp.experts.gate_up_proj[:, 16:]), ('w2', mlp.experts.down_proj)]:
+            setattr(packed.experts, name, torch.nn.Parameter(tensor.detach().clone()))
+        model.model.layers[0].mlp = packed
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            tensor_path = root / 'mla.pt'
+            torch.save({}, tensor_path)
+            model.config.mha2mla = {'mla_tensor_path': str(tensor_path)}
+            partial = root / 'export.incomplete'
+            partial.mkdir()
+            (partial / 'old-partial').write_text('preserve me')
+            dist.init_process_group('gloo', init_method=f'file://{root / "rendezvous"}', rank=0, world_size=1)
+            try:
+                for _ in range(2):
+                    utils.export_hf_checkpoint(SimpleNamespace(module=model),
+                        SimpleNamespace(save_pretrained=lambda path: None), root / 'export', 'out_in',
+                        tensor_path, {'step': 2})
+            finally:
+                dist.destroy_process_group()
+            self.assertTrue(list(root.glob('export.incomplete-previous-*/old-partial')))
+            self.assertFalse(partial.exists())
+            self.assertTrue((root / 'export/export_complete.json').exists())
+            index = json.loads((root / 'export/model.safetensors.index.json').read_text())
+            restored = {}
+            for shard in set(index['weight_map'].values()):
+                restored.update(load_file(str(root / 'export' / shard)))
+            self.assertEqual(restored.keys(), expected.keys())
+            for name, tensor in expected.items():
+                torch.testing.assert_close(restored[name], tensor)
+
     def test_chunked_kl_matches_full_vocabulary_loss_and_gradient(self):
         torch.manual_seed(7)
         for temperature in [1.0, 2.0]:

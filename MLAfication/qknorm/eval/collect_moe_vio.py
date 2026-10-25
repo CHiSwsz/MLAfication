@@ -420,6 +420,9 @@ def load_model(model_name_or_path, ckpt_path, dtype, device, trust_remote_code):
     mha2mla_args = SimpleNamespace(**mha2mla_cfg)
     if getattr(mha2mla_args, "model_name_or_path", None) is None:
         mha2mla_args.model_name_or_path = model_name_or_path
+    tensor_path = getattr(mha2mla_args, 'mla_tensor_path', None)
+    if tensor_path and not os.path.isabs(tensor_path):
+        mha2mla_args.mla_tensor_path = str(ckpt_path / tensor_path)
 
     if getattr(mha2mla_args, "is_baseline", False):
         load_checkpoint(model, str(ckpt_path), strict=False)

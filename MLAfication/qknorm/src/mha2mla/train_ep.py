@@ -155,6 +155,11 @@ def main():
     step, micro, losses, tokens = start_step, 0, torch.zeros((), device=device), 0
     started = time.monotonic()
     end_step = min(start_step + args.probe_steps, config['max_steps']) if probe else config['max_steps']
+    # A final native checkpoint can be resumed solely to finish its HF export.
+    previous_metrics = run_dir / 'train-metrics.jsonl'
+    metric = {'step': start_step, 'time': time.time()}
+    if previous_metrics.exists():
+        metric.update(json.loads(previous_metrics.read_text().splitlines()[-1]))
     for inputs in loader:
         inputs = {name: value.to(device, non_blocking=True) for name, value in inputs.items()}
         with torch.no_grad():
