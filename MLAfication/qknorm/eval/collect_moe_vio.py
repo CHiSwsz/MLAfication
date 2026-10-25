@@ -463,14 +463,25 @@ def build_dataloader(tokenizer, args):
     token_size = 4 if len(tokenizer) > np.iinfo(np.uint16).max + 1 else 2
     tokenizer.model_max_length = origin_model_max_length
 
-    base_dataset = Nanoset(
-        dataset_folders=data_args.dataset_folders,
-        sequence_length=data_args.sequence_length,
-        dataset_weights=data_args.dataset_weights,
-        token_size=token_size,
-        random_seed=args.data_seed,
-        train_split_num_samples=total_num_samples,
-    )
+    # The pinned Nanoset logger expects a default process group even for a
+    # standalone evaluator. Its indexing/data access need no collectives.
+    own_group = not torch.distributed.is_initialized()
+    if own_group:
+        torch.distributed.init_process_group(
+            'gloo', store=torch.distributed.HashStore(), rank=0, world_size=1
+        )
+    try:
+        base_dataset = Nanoset(
+            dataset_folders=data_args.dataset_folders,
+            sequence_length=data_args.sequence_length,
+            dataset_weights=data_args.dataset_weights,
+            token_size=token_size,
+            random_seed=args.data_seed,
+            train_split_num_samples=total_num_samples,
+        )
+    finally:
+        if own_group:
+            torch.distributed.destroy_process_group()
     if args.sample_offset > 0:
         dataset = Subset(
             base_dataset,
