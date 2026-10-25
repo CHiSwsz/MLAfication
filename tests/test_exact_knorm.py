@@ -259,7 +259,27 @@ class ExactKNormTests(unittest.TestCase):
         self.assertFalse(set(config) - supported)
         self.assertEqual(config["knorm_mode"], "exact")
         self.assertEqual(8 * config["per_device_train_batch_size"] * config["gradient_accumulation_steps"], 64)
-        self.assertEqual(config["max_steps"], 4800)
+        self.assertEqual(config["max_steps"], 2400)
+        self.assertEqual(config["max_steps"] * 64 * config["sequence_length"], 629145600)
+        # The main-table checkpoint was saved halfway through a 4800-step run.
+        # Match its observed LR history, not a rescaled 2400-step schedule.
+        optimizer = torch.optim.AdamW(
+            [torch.nn.Parameter(torch.zeros(1))], lr=config["learning_rate"]
+        )
+        # Scheduler math is independent of Nanotron's distributed-only logger.
+        with patch.dict("sys.modules", {
+            "nanotron.logging": SimpleNamespace(log_rank=lambda *args, **kwargs: None),
+        }):
+            scheduler = helpers.lr_scheduler_builder(
+                optimizer, SimpleNamespace(**config["lr_scheduler_kwargs"]), config["max_steps"]
+            )
+        for update in range(1, config["max_steps"] + 1):
+            self.assertAlmostEqual(
+                optimizer.param_groups[0]["lr"],
+                1e-4 * min((update - 1) / 144, 1.0), places=12,
+            )
+            optimizer.step()
+            scheduler.step()
 
 
 if __name__ == "__main__":

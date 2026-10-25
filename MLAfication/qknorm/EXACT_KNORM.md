@@ -61,13 +61,26 @@ the gain and average-RMS scaling. Mode mismatches raise an error.
 
 Copy [the training example](cfgs/qwen3-8b-rank512-exact-knorm.example.yml), fill
 in the local model/data paths, and set `output_dir` to a **new** directory on
-the experiment checkpoint volume. It follows the existing Qwen3-8B rank512
-recipe: global batch 64, 4800 updates, sequence-length setting 4096, KL
-temperature 1, LR 1e-4, 144 warmup steps and 480 final decay steps. Nanoset's
-existing extra-token convention is unchanged; use the same loader and budget
-for the calibrated reference. With 8 ranks, the example uses microbatch 2 and
+the experiment checkpoint volume. It matches the Qwen3-8B rank512 **main-table
+checkpoint at step 2400**: global batch 64, sequence-length setting 4096, KL
+temperature 1 and LR 1e-4. The nominal budget is
+`2400 * 64 * 4096 = 629,145,600` tokens (the approximately 600M setting in
+[Tables 1 and 9](https://arxiv.org/html/2610.17202v1)). Nanoset's existing
+extra-token convention is unchanged; use the same loader and budget for the
+calibrated reference. With 8 ranks, the example uses microbatch 2 and
 accumulation 4, ZeRO-2 and activation checkpointing. If adjusting microbatch,
 keep `world_size * microbatch * accumulation = 64`.
+
+The historical `rank512-distill-onlyQKV-disrms` run was configured for 4800
+updates, but the selected evaluation checkpoint is `checkpoint-2400`.
+Its six Commonsense task-group scores average to 62.9783%, matching the
+main-table 62.98%. The saved training arguments record two ranks, microbatch 2
+and accumulation 16 (global batch 64), despite the appendix's general default
+of 32. The example follows these saved arguments and the checkpoint's LR log:
+144 warmup steps, then constant LR through step 2400. The original decay
+settings (start 4320, duration 480) remain explicit and are never reached in
+this run. Do not halve the warmup or introduce decay at the new stopping step;
+either would change the optimization history of the comparison.
 
 ```bash
 torchrun --nproc_per_node 8 src/mha2mla/train.py \
