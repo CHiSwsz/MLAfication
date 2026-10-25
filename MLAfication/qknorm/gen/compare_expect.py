@@ -39,8 +39,9 @@ if not dist.is_initialized():
 torch.cuda.set_device(rank)
 device = torch.device(f"cuda:{rank}")
 
-tokenizer = AutoTokenizer.from_pretrained("/mnt/shared-storage-gpfs2/shared-storage-ailab-llmfudan-02/zdxie/v2_qwen3/Qwen3-8B-base")
-model = AutoModelForCausalLM.from_pretrained("/mnt/shared-storage-gpfs2/shared-storage-ailab-llmfudan-02/zdxie/v2_qwen3/Qwen3-8B-base").to(device).eval()
+model_name_or_path = os.getenv("MODEL_NAME_OR_PATH", "Qwen/Qwen3-8B-Base")
+tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+model = AutoModelForCausalLM.from_pretrained(model_name_or_path).to(device).eval()
 data_args = MHA2MLADataArguments()
 ds = load_dataset(tokenizer, data_args)
 if tokenizer.pad_token is None:
@@ -393,14 +394,13 @@ def hook_collect_E(module, args, kwargs, output):
     value_states = v_approx
 
     key_states = key_states.view(*input_shape, -1, head_dim)
+    norms = getVariance(key_states)[TOKEN_MASK].double()
+    # Pool first/second moments over the same valid tokens, keeping KV heads separate.
+    moments = torch.stack((norms.sum(0), norms.square().sum(0)))
     if Ek[layer_idx] is not None:
-        Ek[layer_idx] += (
-            getVariance(key_states).sum(dim=(0, 1)).detach().to(dtype=torch.float32)
-        )
+        Ek[layer_idx] += moments
     else:
-        Ek[layer_idx] = (
-            getVariance(key_states).sum(dim=(0, 1)).detach().to(dtype=torch.float32)
-        )
+        Ek[layer_idx] = moments
 
 
 def register_hook(hook_func: callable):
@@ -418,6 +418,7 @@ def remove_hooks(handles):
 
 
 def model_forward(need_count_tokens=False, offset_batches=0):
+    global TOKEN_MASK
     rank = int(os.environ.get("RANK", 0))
     total_steps = num_samples // data_args.per_gpu_batchsize // world_size
     pbar = tqdm(total=total_steps, desc="fwd", disable=(rank != 0))
@@ -428,6 +429,7 @@ def model_forward(need_count_tokens=False, offset_batches=0):
             break
         input_ids = batch["input_ids"].to(device)
         attention_mask = (input_ids != tokenizer.pad_token_id).long()
+        TOKEN_MASK = attention_mask.bool()
         with torch.no_grad():
             if need_count_tokens:
                 batch_tokens = attention_mask.sum()
@@ -530,7 +532,7 @@ def do_SVD(svdnorm_balance_method):
         SVD_weight["W_up_v"][layer_idx] = W_up_v.to(dtype=torch.bfloat16)
         SVD_weight["W_down"][layer_idx] = W_down.to(dtype=torch.bfloat16)
 
-num_samples = 128
+num_samples = int(os.getenv("NUM_SAMPLES", "128"))
 num_batches = num_samples // data_args.per_gpu_batchsize // world_size
 n_layers = model.config.num_hidden_layers
 n_heads = model.config.num_attention_heads
@@ -617,11 +619,15 @@ for seq_len in [1024, 2048, 4096, 8192, 16384]:
     model_forward(need_count_tokens=True, offset_batches=0)
     remove_hooks(handles)
     Ek = [ek / NUM_TOKENS for ek in Ek]
+    # Population std of token-wise RMS norms, not std of batch/context-length means.
+    Ek_std = [(ek[1] - ek[0].square()).clamp_min(0).sqrt() for ek in Ek]
+    Ek = [ek[0] for ek in Ek]
     Ekrope = [ekrope / NUM_TOKENS for ekrope in Ekrope]
     Ec = [ec / NUM_TOKENS for ec in Ec]
     h = model.config.num_key_value_heads // 2
     print(f"seq_len: {seq_len}")
     print(f"Ek: {Ek[n_layers // 2]}")
+    print(f"Ek_std: {Ek_std[n_layers // 2]}")
     print(f"Ekrope: {Ekrope[n_layers // 2]}")
     print(f"Ec: {Ec[n_layers // 2]}")
     # print(f"Ekrope / Ek: {Ekrope[n_layers // 2][h] / Ek[n_layers // 2][h]}")
