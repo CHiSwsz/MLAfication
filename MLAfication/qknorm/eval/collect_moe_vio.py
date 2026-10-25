@@ -14,7 +14,6 @@ from typing import Optional
 import numpy as np
 import torch
 import torch.nn.functional as F
-from nanotron.data.nanoset import Nanoset
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
@@ -32,7 +31,6 @@ for extra_path in (str(SRC_MHA2MLA_DIR), str(GEN_DIR), str(REPO_ROOT)):
         sys.path.insert(0, extra_path)
 
 from helpers import load_checkpoint
-from mha2mla_datasets import MHA2MLADataArguments
 
 
 @dataclass
@@ -444,6 +442,9 @@ def move_model(model, device, dtype):
 
 
 def build_dataloader(tokenizer, args):
+    from nanotron.data.nanoset import Nanoset
+    from mha2mla_datasets import MHA2MLADataArguments
+
     os.environ["MHA2MLA_DATA_PATH"] = args.data_path.rstrip("/")
     data_args = MHA2MLADataArguments()
     data_args.sequence_length = args.seq_length
