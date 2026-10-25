@@ -252,7 +252,7 @@ def get_attn_logits_max(query_states, key_states, scaling, chunk_size=256):
         q = query_states[:, :, start : start + chunk_size, :].to(torch.float32)
         logits = torch.matmul(q, key_states_t) * scaling
 
-        q_pos = torch.arange(start, start + chunk_size, device=logits.device).unsqueeze(-1)   # [q_chunk,1]
+        q_pos = torch.arange(start, start + q.size(-2), device=logits.device).unsqueeze(-1)   # [q_chunk,1]
         k_pos = torch.arange(key_states.size(-2), device=logits.device).unsqueeze(0)   # [1,k_len_total]
         causal_mask = k_pos <= q_pos                                            # [q_chunk,k_len_total]
         logits = logits.masked_fill(~causal_mask.unsqueeze(0).unsqueeze(0), -100.0)
