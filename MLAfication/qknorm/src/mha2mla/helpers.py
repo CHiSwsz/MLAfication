@@ -109,6 +109,16 @@ def freeze_non_attn_weights_v2(model):
             param.requires_grad = True
 
 def load_checkpoint(model, path, strict=True):
+    config_path = os.path.join(path, "config.json")
+    if os.path.isfile(config_path) and hasattr(model.config, "mla_knorm_mode"):
+        with open(config_path, encoding="utf-8") as handle:
+            checkpoint_config = json.load(handle)
+        checkpoint_mode = checkpoint_config.get("mla_knorm_mode", "calibrated")
+        if checkpoint_mode != model.config.mla_knorm_mode:
+            raise ValueError(
+                f"Checkpoint KNorm mode {checkpoint_mode!r} does not match model "
+                f"mode {model.config.mla_knorm_mode!r}"
+            )
     single_file = os.path.join(path, "model.safetensors")
     single_bin_file = os.path.join(path, "pytorch_model.bin")
     if os.path.exists(single_file):

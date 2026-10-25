@@ -16,6 +16,10 @@ class MHA2MLAModelArguments:
             "help": "Path to pre-computed MLA tensor file, e.g., 'utils/mla_tensors_135M.pth'"
         },
     )
+    knorm_mode: Optional[str] = field(
+        default=None,
+        metadata={"help": "calibrated or exact; None infers the mode from the MLA tensors"},
+    )
     output_mla_dir: str = field(
         default=None,
         metadata={"help": "Directory to save the patched MLA model"},
@@ -26,6 +30,8 @@ class MHA2MLAModelArguments:
     )
 
     def __post_init__(self):
+        if self.knorm_mode not in {None, "calibrated", "exact"}:
+            raise ValueError("knorm_mode must be calibrated, exact, or null")
         if hasattr(super(), "__post_init__"):
             super().__post_init__()
 

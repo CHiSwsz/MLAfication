@@ -89,6 +89,8 @@ def custom_Qwen3Attention_instance_forward(
     value_states = v.view(v_shape).transpose(1, 2)
 
     if hasattr(self, "k_norm"):
+        # Normalize all reconstructed key dimensions jointly, before Partial-RoPE.
+        # Normalizing the RoPE and NoPE parts separately changes the model.
         k = torch.cat([k_r, k_c], dim=-1)
         k = self.k_norm(k.transpose(1, 2)).transpose(1, 2)
         k_r, k_c = k[..., : k_r.size(-1)], k[..., k_r.size(-1) :]
