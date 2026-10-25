@@ -42,8 +42,8 @@ torchrun --standalone --nproc_per_node=8 src/mha2mla/smoke_ep.py \
 python src/mha2mla/run_ep_distill.py --config /runs/mlafication/run.json
 ```
 
-The smoke test checks EP output against ordinary Transformers, AC backward,
-router/expert updates, a native checkpoint reload, and a portable checkpoint
+The smoke test checks EP output and averaged router/expert gradients against
+ordinary Transformers, AC backward, router/expert updates, a native checkpoint reload, and a portable checkpoint
 reload without AutoEP. The driver then probes micro-batches 8, 4, 2, 1 in
 descending order. Each fresh process performs three complete optimizer
 updates, including optimizer-state allocation, and must retain 8 GiB of
@@ -81,3 +81,13 @@ average positive overload. Preserve the original evaluation datasets and seeds.
 throughput, actual tokens, chosen micro-batch, and the maximum CUDA memory
 across all ranks. A successful probe alone does not establish a healthy run;
 check continued optimizer-step progress and finite metrics over time.
+
+To chain the three evaluations after training, run
+`python eval/evaluate_full_ep.py --config /runs/mlafication/eval.json`.
+The evaluation JSON supplies `checkpoint`, `output_dir`, `model_name_or_path`,
+`peft_checkpoint`, `data_root`, `tasks_file`, `custom_tasks`, and
+`longbench_source` (the existing local LongBench dataset script, or its dataset
+identifier). It runs the supplied original Commonsense tasks, BF16 LongBench
+at 4K, then Vio for the baseline, full model and PEFT checkpoint on the same
+128 held-out samples (seed 42, sample offset 512000). `paper_vio.json` computes
+the maximum and mean of the per-layer maxima, matching Table 8.

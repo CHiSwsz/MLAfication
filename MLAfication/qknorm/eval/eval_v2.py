@@ -82,6 +82,8 @@ def create_load_func(mha2mla_args):
             mha_model = AutoModelForCausalLM.from_pretrained(
                 mha2mla_args.model_name_or_path,
                 trust_remote_code=config.trust_remote_code,
+                dtype=torch_dtype,
+                low_cpu_mem_usage=True,
             )
             from patching_mla_fwd import patch_mla_fwd_instance
             from patching_mlafication import patch_mlafication

@@ -80,11 +80,26 @@ def main():
     router = engine.module.model.layers[0].mlp.router.gate.weight
     expert = engine.module.model.layers[0].mlp.experts.w1
     before_router, before_expert = router.detach().clone(), expert.detach().clone()
-    for _ in range(2):
+    reference(tokens, labels=tokens).loss.backward()
+    reference_router_grad = reference.model.layers[0].mlp.gate.weight.grad.float()
+    reference_expert_grad = reference.model.layers[0].mlp.experts.gate_up_proj.grad.float()
+    for gradient in (reference_router_grad, reference_expert_grad):
+        dist.all_reduce(gradient)
+        gradient.div_(world)
+    local_expert_grad = reference_expert_grad[rank * 2:(rank + 1) * 2, :128]
+    for update in range(2):
         loss = engine(tokens, labels=tokens).loss
         if not torch.isfinite(loss):
             raise RuntimeError('Non-finite smoke loss')
         engine.backward(loss)
+        if update == 0:
+            from deepspeed.utils import safe_get_full_grad
+            # Catch incorrect EP/DP gradient scaling, which Adam's first update
+            # can conceal because it is nearly invariant to a constant scale.
+            for parameter, expected_grad in ((router, reference_router_grad), (expert, local_expert_grad)):
+                actual_grad = safe_get_full_grad(parameter).float()
+                relative_error = (actual_grad - expected_grad).norm() / expected_grad.norm().clamp_min(1e-12)
+                assert relative_error < .08, f'EP gradient relative error: {relative_error.item()}'
         engine.step()
     with torch.no_grad():
         torch.testing.assert_close(teacher(tokens).logits, expected, rtol=.03, atol=.006)

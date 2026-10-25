@@ -758,7 +758,9 @@ def load_model(mha2mla_args, dtype, ckpt_path, cache_args: Optional["CacheArgume
         from patching_mlafication import patch_mlafication
         # Instance
         model_config = AutoConfig.from_pretrained(ckpt_path)
-        mha_model = AutoModelForCausalLM.from_pretrained(mha2mla_args.model_name_or_path)
+        mha_model = AutoModelForCausalLM.from_pretrained(
+            mha2mla_args.model_name_or_path, dtype=dtype, low_cpu_mem_usage=True
+        )
         mla_model = patch_mlafication(mha_model, model_config, mha2mla_args)
         patch_mla_fwd_instance(mla_model)
         # Load weights
@@ -775,7 +777,9 @@ def load_model(mha2mla_args, dtype, ckpt_path, cache_args: Optional["CacheArgume
         from patching_mlafication import patch_mlafication
         # Instance
         model_config = AutoConfig.from_pretrained(mha2mla_args.model_name_or_path)
-        mha_model = AutoModelForCausalLM.from_pretrained(mha2mla_args.model_name_or_path)
+        mha_model = AutoModelForCausalLM.from_pretrained(
+            mha2mla_args.model_name_or_path, dtype=dtype, low_cpu_mem_usage=True
+        )
         mla_model = patch_mlafication(mha_model, model_config, mha2mla_args)
         patch_mla_fwd_instance(mla_model)
         model = mla_model.to(device, dtype=dtype)

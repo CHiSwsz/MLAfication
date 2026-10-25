@@ -64,13 +64,16 @@ class MoeStatsCollector:
             mlp = getattr(layer, "mlp", None)
             if not is_moe_block(mlp):
                 continue
-            self.layer_name_to_idx[id(mlp)] = layer_idx
-            self.layers.append((layer_idx, mlp))
+            # Transformers 5 returns selected indices from the router child;
+            # older versions return router logits from the whole MoE block.
+            target = mlp.gate if hasattr(mlp.gate, 'top_k') else mlp
+            self.layer_name_to_idx[id(target)] = layer_idx
+            self.layers.append((layer_idx, target))
             self.route_cache[layer_idx] = []
-            num_experts = int(mlp.num_experts)
+            num_experts = int(target.num_experts)
             self.layer_stats[layer_idx] = {
                 "num_experts": num_experts,
-                "top_k": int(mlp.top_k),
+                "top_k": int(target.top_k),
                 "tokens": 0,
                 "counts": torch.zeros(num_experts, dtype=torch.long),
             }
@@ -98,13 +101,15 @@ class MoeStatsCollector:
 
     def hook(self, module, inputs, output):
         layer_idx = self.layer_name_to_idx[id(module)]
-        router_logits = extract_router_logits(output)
-        if router_logits is None:
-            return
-
         top_k = int(module.top_k)
         num_experts = int(module.num_experts)
-        selected = router_logits.detach().float().topk(top_k, dim=-1).indices
+        if isinstance(output, tuple) and len(output) == 3:
+            selected = output[2].detach()
+        else:
+            router_logits = extract_router_logits(output)
+            if router_logits is None:
+                raise RuntimeError('MoE hook did not expose router logits or selected expert indices')
+            selected = router_logits.detach().float().topk(top_k, dim=-1).indices
         selected = selected.to(torch.long)
         flat_selected = selected.reshape(-1)
 
@@ -349,8 +354,8 @@ def is_moe_block(module):
     return (
         module is not None
         and hasattr(module, "gate")
-        and hasattr(module, "num_experts")
-        and hasattr(module, "top_k")
+        and ((hasattr(module, "num_experts") and hasattr(module, "top_k"))
+             or (hasattr(module.gate, "num_experts") and hasattr(module.gate, "top_k")))
     )
 
 
