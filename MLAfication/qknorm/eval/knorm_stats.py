@@ -1,10 +1,9 @@
-"""Token-wise key RMS statistics, pooled over batches and distributed ranks."""
+"""Token-wise key RMS statistics, pooled over calibration batches."""
 
 import json
 from pathlib import Path
 
 import torch
-import torch.distributed as dist
 
 
 def key_rms(key_states, eps):
@@ -43,22 +42,6 @@ class TokenNormStats:
         self.m2 += variance * count + delta.square() * (self.count * count / total)
         self.mean += delta * (count / total)
         self.count = total
-
-    def synchronize(self):
-        """Pool moments, including unequal or empty ranks; call once after updates."""
-        if not dist.is_available() or not dist.is_initialized() or dist.get_world_size() == 1:
-            return
-        count = self.mean.new_tensor(self.count)
-        dist.all_reduce(count)
-        total = int(count.item())
-        if not total:
-            return
-        mean = self.mean * self.count
-        dist.all_reduce(mean)
-        mean /= total
-        m2 = self.m2 + self.count * (self.mean - mean).square()
-        dist.all_reduce(m2)
-        self.count, self.mean, self.m2 = total, mean, m2
 
     @property
     def std(self):

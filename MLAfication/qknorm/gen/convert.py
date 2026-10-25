@@ -25,7 +25,6 @@ from svdllm import (
     scaled_KV_svdllm,
 )
 from mha2mla_datasets import MHA2MLADataArguments, load_dataset
-from knorm_stats import TokenNormStats, context_record, key_rms, write_report
 
 
 def parse_args():
@@ -38,10 +37,6 @@ def parse_args():
     parser.add_argument("--topk", type=int, default=8)
     parser.add_argument("--num_samples", type=int, default=128)
     parser.add_argument("--sequence_length", type=int, default=4096)
-    parser.add_argument(
-        "--knorm_stats_path",
-        help="Optional JSON report of reconstructed-key token-wise mean, std and CV per layer/KV head.",
-    )
     parser.add_argument(
         "--svd_method",
         choices=(
@@ -386,6 +381,13 @@ def hook_mha2mla_partial_rope_svd(module, args, kwargs, output):
         ERROR_SUM_SVD[module.layer_idx] += error.item()
 
 
+def getVariance(tensor):
+    return torch.sqrt(
+        tensor.to(torch.float32).pow(2).mean(-1, keepdim=True)
+        + model.config.rms_norm_eps
+    )
+
+
 def hook_collect_E(module, args, kwargs, output):
     hidden_states = kwargs["hidden_states"]
     input_shape = hidden_states.shape[:-1]
@@ -432,16 +434,14 @@ def hook_collect_E(module, args, kwargs, output):
     value_states = v_approx
 
     key_states = key_states.view(*input_shape, -1, head_dim)
-    norms = key_rms(key_states, model.config.rms_norm_eps)
-    # Preserve the existing conversion mean; diagnostics separately exclude
-    # padding and use FP64 central moments for the token-wise distribution.
-    batch_sum = norms.sum(dim=(0, 1)).unsqueeze(-1)
-    if Ek[layer_idx] is None:
-        Ek[layer_idx] = batch_sum
+    if Ek[layer_idx] is not None:
+        Ek[layer_idx] += (
+            getVariance(key_states).sum(dim=(0, 1)).detach().to(dtype=torch.float32)
+        )
     else:
-        Ek[layer_idx] += batch_sum
-    if E_STATS is not None:
-        E_STATS[layer_idx].update(norms, CALIBRATION_ATTENTION_MASK)
+        Ek[layer_idx] = (
+            getVariance(key_states).sum(dim=(0, 1)).detach().to(dtype=torch.float32)
+        )
 
 
 def hook_test_E(module, args, kwargs, output):
@@ -570,7 +570,6 @@ def remove_hooks(handles):
 
 
 def model_forward(need_count_tokens=False, offset_batches=0):
-    global CALIBRATION_ATTENTION_MASK
     rank = int(os.environ.get("RANK", 0))
     total_steps = num_samples // data_args.per_gpu_batchsize // world_size
     pbar = tqdm(total=total_steps, desc="fwd", disable=(rank != 0))
@@ -581,7 +580,6 @@ def model_forward(need_count_tokens=False, offset_batches=0):
             break
         input_ids = batch["input_ids"].to(device)
         attention_mask = (input_ids != tokenizer.pad_token_id).long()
-        CALIBRATION_ATTENTION_MASK = attention_mask
         with torch.no_grad():
             if need_count_tokens:
                 batch_tokens = attention_mask.sum()
@@ -848,8 +846,6 @@ if int(os.environ.get("RANK", 0)) == 0:
     print("ERROR_SUM_SVD AVG:", f"{sum(ERROR_SUM_SVD) / len(ERROR_SUM_SVD):.2f}")
 
 Ek = [None for _ in range(n_layers)]
-E_STATS = ([TokenNormStats(model.config.num_key_value_heads, device) for _ in range(n_layers)]
-           if cli_args.knorm_stats_path else None)
 handles = register_hook(hook_collect_E)
 model_forward(need_count_tokens=False, offset_batches=0)
 remove_hooks(handles)
@@ -857,19 +853,6 @@ for value in Ek:
     dist.all_reduce(value, op=dist.ReduceOp.SUM)
 Ek = [ek / NUM_TOKENS for ek in Ek]
 print(f"Ek: {Ek}")
-if E_STATS is not None:
-    for stats in E_STATS:
-        stats.synchronize()
-    if rank == 0:
-        write_report(
-            cli_args.knorm_stats_path,
-            [context_record(E_STATS, CALIBRATION_ATTENTION_MASK.shape[1])],
-            model_name_or_path=cli_args.model_name_or_path, key_source="reconstructed_mla_pre_knorm",
-            rms_norm_eps=model.config.rms_norm_eps, requested_num_samples=num_samples,
-            requested_context_length=cli_args.sequence_length,
-            conversion_alpha=[ek.squeeze(-1).tolist() for ek in Ek],
-            lora_rank=lora_rank, topk=topk, svd_method=cli_args.svd_method,
-        )
 
 ERROR_SUM_E = [0 for _ in range(n_layers)]
 handles = register_hook(hook_test_E)

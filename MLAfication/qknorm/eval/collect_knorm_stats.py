@@ -86,7 +86,7 @@ def main():
 
     config = AutoConfig.from_pretrained(args.model_name_or_path)
     if config.model_type not in ("qwen3", "qwen3_moe") or getattr(config, "mha2mla", None):
-        raise ValueError("Use the original Qwen3/Qwen3-MoE checkpoint; converted keys are collected by gen/convert.py")
+        raise ValueError("Use the original, unconverted Qwen3/Qwen3-MoE checkpoint")
     layer = config.num_hidden_layers // 2 if args.layer is None else args.layer
     head = config.num_key_value_heads // 2 if args.head is None else args.head
     if not 0 <= layer < config.num_hidden_layers or not 0 <= head < config.num_key_value_heads:
